@@ -30,7 +30,7 @@ namespace Nethereum.XUnitEthereumClients
     public class EthereumClientIntegrationFixture : IDisposable
     {
         public const string ETHEREUM_CLIENT_COLLECTION_DEFAULT = "Ethereum client Test";
-        public static string GethClientPath { get; set; }  = @"..\..\..\..\testchain\clique\geth.exe";
+        public static string GethClientPath { get; set; } = @"..\..\..\..\testchain\clique\geth.exe";
         public static string ParityClientPath { get; set; } = @"..\..\..\..\testchain\paritypoa\parity.exe";
         public static string AccountPrivateKey { get; set; } = "0xb5b1870957d373ef0eeffecc6e4812c0fd08f554b37b233526acc331bf1544f7";
         public static string AccountAddress { get; set; } = "0x12890d2cce102216644c59daE5baed380d84830c";
@@ -52,7 +52,7 @@ namespace Nethereum.XUnitEthereumClients
 
         private readonly Process _process;
         private readonly string _exePath;
-        
+
         public string GetInfuraUrl(InfuraNetwork infuraNetwork)
         {
             return "https://" + Enum.GetName(typeof(InfuraNetwork), infuraNetwork).ToLower() + ".infura.io/v3/" + InfuraId;
@@ -65,7 +65,7 @@ namespace Nethereum.XUnitEthereumClients
 
         private string GetHttpUrl()
         {
-            if(EthereumClient == EthereumClient.Infura)
+            if (EthereumClient == EthereumClient.Infura)
             {
                 return GetInfuraUrl(InfuraNetwork);
             }
@@ -91,6 +91,7 @@ namespace Nethereum.XUnitEthereumClients
         public static IConfiguration InitConfiguration()
         {
             var config = new ConfigurationBuilder().AddJsonFile("appsettings.test.json", true)
+                .AddEnvironmentVariables($"{nameof(EthereumTestSettings)}_")
                 .Build();
             return config;
         }
@@ -121,24 +122,21 @@ namespace Nethereum.XUnitEthereumClients
             var config = InitConfiguration();
             if (config != null)
             {
+                var ethereumTestSettings = new EthereumTestSettings();
+                config.Bind(nameof(EthereumTestSettings), ethereumTestSettings); // Bind from from appsettings.test.json
+                config.Bind(ethereumTestSettings); // override with Environment Variables 
 
-                var ethereumTestSection = config.GetSection("EthereumTestSettings");
-                
-                if (ethereumTestSection != null)
-                { 
-                    var ethereumTestSettings = new EthereumTestSettings();
-                    ethereumTestSection.Bind(ethereumTestSettings);
-                    if (!string.IsNullOrEmpty(ethereumTestSettings.GethPath)) GethClientPath = ethereumTestSettings.GethPath;
-                    if (!string.IsNullOrEmpty(ethereumTestSettings.ParityPath)) ParityClientPath = ethereumTestSettings.ParityPath;
-                    if (!string.IsNullOrEmpty(ethereumTestSettings.AccountAddress)) AccountAddress = ethereumTestSettings.AccountAddress;
-                    if (!string.IsNullOrEmpty(ethereumTestSettings.AccountPrivateKey)) AccountPrivateKey = ethereumTestSettings.AccountPrivateKey;
-                    if (!string.IsNullOrEmpty(ethereumTestSettings.ChainId)) ChainId = BigInteger.Parse(ethereumTestSettings.ChainId);
-                    if (!string.IsNullOrEmpty(ethereumTestSettings.ManagedAccountPassword)) ManagedAccountPassword = ethereumTestSettings.ManagedAccountPassword;
-                    if (!string.IsNullOrEmpty(ethereumTestSettings.Client)) EthereumClient = (EthereumClient)Enum.Parse(typeof(EthereumClient), ethereumTestSettings.Client);
-                    if (!string.IsNullOrEmpty(ethereumTestSettings.InfuraNetwork)) InfuraNetwork = (InfuraNetwork)Enum.Parse(typeof(InfuraNetwork), ethereumTestSettings.InfuraNetwork); ;
-                    if (!string.IsNullOrEmpty(ethereumTestSettings.InfuraId)) InfuraId =  ethereumTestSettings.InfuraId;
-                    if (!string.IsNullOrEmpty(ethereumTestSettings.HttpUrl)) HttpUrl =  ethereumTestSettings.HttpUrl;
-                }
+                if (!string.IsNullOrEmpty(ethereumTestSettings.GethPath)) GethClientPath = ethereumTestSettings.GethPath;
+                if (!string.IsNullOrEmpty(ethereumTestSettings.ParityPath)) ParityClientPath = ethereumTestSettings.ParityPath;
+                if (!string.IsNullOrEmpty(ethereumTestSettings.AccountAddress)) AccountAddress = ethereumTestSettings.AccountAddress;
+                if (!string.IsNullOrEmpty(ethereumTestSettings.AccountPrivateKey)) AccountPrivateKey = ethereumTestSettings.AccountPrivateKey;
+                if (!string.IsNullOrEmpty(ethereumTestSettings.ChainId)) ChainId = BigInteger.Parse(ethereumTestSettings.ChainId);
+                if (!string.IsNullOrEmpty(ethereumTestSettings.ManagedAccountPassword)) ManagedAccountPassword = ethereumTestSettings.ManagedAccountPassword;
+                if (!string.IsNullOrEmpty(ethereumTestSettings.Client)) EthereumClient = (EthereumClient)Enum.Parse(typeof(EthereumClient), ethereumTestSettings.Client);
+                if (!string.IsNullOrEmpty(ethereumTestSettings.InfuraNetwork)) InfuraNetwork = (InfuraNetwork)Enum.Parse(typeof(InfuraNetwork), ethereumTestSettings.InfuraNetwork); ;
+                if (!string.IsNullOrEmpty(ethereumTestSettings.InfuraId)) InfuraId = ethereumTestSettings.InfuraId;
+                if (!string.IsNullOrEmpty(ethereumTestSettings.HttpUrl)) HttpUrl = ethereumTestSettings.HttpUrl;
+
             }
 
             var client = Environment.GetEnvironmentVariable("ETHEREUM_CLIENT");
@@ -154,7 +152,7 @@ namespace Nethereum.XUnitEthereumClients
 
             if (string.IsNullOrEmpty(client))
             {
-                
+
             }
             else if (client == "geth")
             {
@@ -205,7 +203,7 @@ namespace Nethereum.XUnitEthereumClients
                 };
                 _process = Process.Start(psi);
             }
-            else if(EthereumClient == EthereumClient.Parity)
+            else if (EthereumClient == EthereumClient.Parity)
             {
 
                 var location = typeof(EthereumClientIntegrationFixture).GetTypeInfo().Assembly.Location;
@@ -234,7 +232,7 @@ namespace Nethereum.XUnitEthereumClients
                     WindowStyle = ProcessWindowStyle.Normal,
                     UseShellExecute = true,
                     WorkingDirectory = _exePath,
-                    Arguments = " --account="+AccountPrivateKey+",10000000000000000000000"
+                    Arguments = " --account=" + AccountPrivateKey + ",10000000000000000000000"
 
                 };
                 _process = Process.Start(psi);
@@ -288,7 +286,7 @@ namespace Nethereum.XUnitEthereumClients
                 }
 
             }
-            else if(EthereumClient == EthereumClient.Parity)
+            else if (EthereumClient == EthereumClient.Parity)
             {
                 var pathData = Path.Combine(Path.GetDirectoryName(_exePath), @"parity0\chains");
 
