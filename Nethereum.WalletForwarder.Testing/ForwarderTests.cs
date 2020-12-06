@@ -63,7 +63,7 @@ namespace Nethereum.Forwarder.IntegrationTests
 
                 return (salt, saltHex);
             }
-            else if (saltType == SaltType.String_Guid)
+            else if (saltType == SaltType.String_NBitcoin_RandomUtils)
             {
                 var salt = RandomUtils.GetBytes(32);
                 var saltHex = salt.ToHex();
@@ -74,32 +74,35 @@ namespace Nethereum.Forwarder.IntegrationTests
             {
                 throw new NotSupportedException($"Wrong {saltType}");
             }
+
+            /*
+            var salt = new BigInteger(RandomUtils.GetBytes(32)); //salt id
+            if (salt < 0) // Because maybe we have negative salt and positive salt at the same time then, we can not use it.
+            {
+                salt = -1 * salt;
+            }
+             var saltHex = new IntTypeEncoder().Encode(salt).ToHex();
+            */
         }
 
         #region ShouldDeployForwarder_CloneItUsingFactory_TransferEther
 
         [Fact]
-        public void ShouldDeployForwarder_CloneItUsingFactory_TransferEther_Salt_Is_Unit()
+        public async void ShouldDeployForwarder_CloneItUsingFactory_TransferEther_Salt_Is_Unit()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_CloneItUsingFactory_TransferEther(SaltType.Unint);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_CloneItUsingFactory_TransferEther(SaltType.Unint);
         }
 
         [Fact]
-        public void ShouldDeployForwarder_CloneItUsingFactory_TransferEther_Salt_Is_String_Guid()
+        public async void ShouldDeployForwarder_CloneItUsingFactory_TransferEther_Salt_Is_String_Guid()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_CloneItUsingFactory_TransferEther(SaltType.String_Guid);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_CloneItUsingFactory_TransferEther(SaltType.String_Guid);
         }
 
         [Fact]
-        public void ShouldDeployForwarder_CloneItUsingFactory_TransferEther_Salt_Is_String_NBitcoin_RandomUtils()
+        public async void ShouldDeployForwarder_CloneItUsingFactory_TransferEther_Salt_Is_String_NBitcoin_RandomUtils()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_CloneItUsingFactory_TransferEther(SaltType.String_NBitcoin_RandomUtils);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_CloneItUsingFactory_TransferEther(SaltType.String_NBitcoin_RandomUtils);
         }
 
 
@@ -170,29 +173,23 @@ namespace Nethereum.Forwarder.IntegrationTests
         #region  ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther
 
         [Fact]
-        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther_Salt_Is_Unit()
+        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther_Salt_Is_Unit()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther(SaltType.Unint);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther(SaltType.Unint);
         }
 
 
         [Fact]
-        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther_Salt_Is_String_Guid()
+        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther_Salt_Is_String_Guid()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther(SaltType.String_Guid);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther(SaltType.String_Guid);
         }
 
 
         [Fact]
-        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther_Salt_Is_String_NBitcoin_RandomUtils()
+        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther_Salt_Is_String_NBitcoin_RandomUtils()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther(SaltType.String_NBitcoin_RandomUtils);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther(SaltType.String_NBitcoin_RandomUtils);
         }
 
         async Task ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther(SaltType saltType)
@@ -293,28 +290,22 @@ namespace Nethereum.Forwarder.IntegrationTests
         #region ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory
 
         [Fact]
-        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory_Salt_Is_Unit()
+        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory_Salt_Is_Unit()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory(SaltType.Unint);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory(SaltType.Unint);
         }
 
         [Fact]
-        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory_Salt_Is_String_Guid()
+        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory_Salt_Is_String_Guid()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory(SaltType.String_Guid);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory(SaltType.String_Guid);
         }
 
 
         [Fact]
-        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory_Salt_Is_String_NBitcoin_RandomUtils()
+        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory_Salt_Is_String_NBitcoin_RandomUtils()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory(SaltType.String_NBitcoin_RandomUtils);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory(SaltType.String_NBitcoin_RandomUtils);
         }
 
 
@@ -424,27 +415,21 @@ namespace Nethereum.Forwarder.IntegrationTests
         #region
 
         [Fact]
-        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory_Salt_Is_Unit()
+        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory_Salt_Is_Unit()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory(SaltType.Unint);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory(SaltType.Unint);
         }
 
         [Fact]
-        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory_Salt_Is_String_Guid()
+        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory_Salt_Is_String_Guid()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory(SaltType.String_Guid);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory(SaltType.String_Guid);
         }
 
         [Fact]
-        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory_Salt_Is_String_NBitcoin_RandomUtils()
+        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory_Salt_Is_String_NBitcoin_RandomUtils()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory(SaltType.String_NBitcoin_RandomUtils);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory(SaltType.String_NBitcoin_RandomUtils);
         }
 
         async Task ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory(SaltType saltType)
@@ -549,33 +534,21 @@ namespace Nethereum.Forwarder.IntegrationTests
         #region
 
         [Fact]
-        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken_Salt_Is_Unit()
+        public async void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken_Salt_Is_Unit()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-
-            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken(SaltType.Unint);
-
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken(SaltType.Unint);
         }
 
         [Fact]
-        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken_Salt_Is_String_Guid()
+        public async void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken_Salt_Is_String_Guid()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-
-            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken(SaltType.String_Guid);
-
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken(SaltType.String_Guid);
         }
 
         [Fact]
-        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken_Salt_Is_String_NBitcoin_RandomUtils()
+        public async void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken_Salt_Is_String_NBitcoin_RandomUtils()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-
-            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken(SaltType.String_NBitcoin_RandomUtils);
-
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken(SaltType.String_NBitcoin_RandomUtils);
         }
 
         async Task ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken(SaltType saltType)
@@ -666,33 +639,21 @@ namespace Nethereum.Forwarder.IntegrationTests
         #region
 
         [Fact]
-        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory_Salt_Is_Unit()
+        public async void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory_Salt_Is_Unit()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-
-            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory(SaltType.Unint);
-
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory(SaltType.Unint);
         }
 
         [Fact]
-        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory_Salt_Is_String_Guid()
+        public async void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory_Salt_Is_String_Guid()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-
-            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory(SaltType.String_Guid);
-
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory(SaltType.String_Guid);
         }
 
         [Fact]
-        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory_Salt_Is_String_NBitcoin_RandomUtilst()
+        public async void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory_Salt_Is_String_NBitcoin_RandomUtilst()
         {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-
-            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory(SaltType.String_NBitcoin_RandomUtils);
-
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            await ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory(SaltType.String_NBitcoin_RandomUtils);
         }
 
         async Task ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory(SaltType saltType)
