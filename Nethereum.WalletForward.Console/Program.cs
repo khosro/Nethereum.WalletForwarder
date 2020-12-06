@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Nethereum.WalletForward.Console
+namespace Nethereum.WalletForward.Console1
 {
     class Program
     {

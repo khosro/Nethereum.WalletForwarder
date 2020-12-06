@@ -21,9 +21,21 @@ using System.Threading.Tasks;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using Nethereum.RPC.Eth.DTOs;
+using System.Text;
+using NBitcoin;
 
 namespace Nethereum.Forwarder.IntegrationTests
 {
+
+
+    public enum SaltType
+    {
+        String_Guid,
+        String_NBitcoin_RandomUtils,
+        Unint
+    }
+
     [Collection(EthereumClientIntegrationFixture.ETHEREUM_CLIENT_COLLECTION_DEFAULT)]
     public class ForwarderTests
 
@@ -41,8 +53,57 @@ namespace Nethereum.Forwarder.IntegrationTests
             Assert.True(true);
         }
 
+
+        (byte[] Salt, string SaltHax) GetSalts(SaltType saltType)
+        {
+            if (saltType == SaltType.String_Guid)
+            {
+                var salt = Encoding.ASCII.GetBytes(Guid.NewGuid().ToString().Replace("-", ""));
+                var saltHex = salt.ToHex();
+
+                return (salt, saltHex);
+            }
+            else if (saltType == SaltType.String_Guid)
+            {
+                var salt = RandomUtils.GetBytes(32);
+                var saltHex = salt.ToHex();
+
+                return (salt, saltHex);
+            }
+            else
+            {
+                throw new NotSupportedException($"Wrong {saltType}");
+            }
+        }
+
+        #region ShouldDeployForwarder_CloneItUsingFactory_TransferEther
+
         [Fact]
-        public async void ShouldDeployForwarder_CloneItUsingFactory_TransferEther()
+        public void ShouldDeployForwarder_CloneItUsingFactory_TransferEther_Salt_Is_Unit()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_CloneItUsingFactory_TransferEther(SaltType.Unint);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        [Fact]
+        public void ShouldDeployForwarder_CloneItUsingFactory_TransferEther_Salt_Is_String_Guid()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_CloneItUsingFactory_TransferEther(SaltType.String_Guid);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        [Fact]
+        public void ShouldDeployForwarder_CloneItUsingFactory_TransferEther_Salt_Is_String_NBitcoin_RandomUtils()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_CloneItUsingFactory_TransferEther(SaltType.String_NBitcoin_RandomUtils);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+
+        async Task ShouldDeployForwarder_CloneItUsingFactory_TransferEther(SaltType saltType)
         {
             var destinationAddress = "0x6C547791C3573c2093d81b919350DB1094707011";
             var web3 = _ethereumClientIntegrationFixture.GetWeb3();
@@ -53,7 +114,7 @@ namespace Nethereum.Forwarder.IntegrationTests
 
             var defaultForwarderDeploymentReceipt = await ForwarderService.DeployContractAndWaitForReceiptAsync(web3, new ForwarderDeployment());
             var defaultForwaderContractAddress = defaultForwarderDeploymentReceipt.ContractAddress;
-            var defaultForwarderService =  new ForwarderService(web3, defaultForwaderContractAddress);
+            var defaultForwarderService = new ForwarderService(web3, defaultForwaderContractAddress);
             await defaultForwarderService.ChangeDestinationRequestAndWaitForReceiptAsync(destinationAddress);
             var destinationInContract = await defaultForwarderService.DestinationQueryAsync();
             Assert.True(destinationInContract.IsTheSameAddress(destinationAddress));
@@ -62,12 +123,28 @@ namespace Nethereum.Forwarder.IntegrationTests
             var factoryAddress = factoryDeploymentReceipt.ContractAddress;
             var factoryService = new ForwarderFactoryService(web3, factoryDeploymentReceipt.ContractAddress);
 
-            //New invovice 
-            var salt = BigInteger.Parse("12");
-            var saltHex = new IntTypeEncoder().Encode(salt).ToHex();
+            TransactionReceipt txnReceipt;
+            string saltHex;
+            if (saltType == SaltType.Unint)
+            {
+                //New invovice 
+                var salt = BigInteger.Parse("12");
+                saltHex = new IntTypeEncoder().Encode(salt).ToHex();
+
+                txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt);
+            }
+            else
+            {
+                //New invovice 
+                var salts = GetSalts(saltType);
+                var salt = salts.Salt;
+                saltHex = salts.SaltHax;
+
+                txnReceipt = await factoryService.CloneForwarder1RequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt);
+            }
 
             var contractCalculatedAddress = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex, defaultForwaderContractAddress);
-            var txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt);
+
             var clonedAdress = txnReceipt.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
             Assert.True(clonedAdress.IsTheSameAddress(contractCalculatedAddress));
 
@@ -78,7 +155,7 @@ namespace Nethereum.Forwarder.IntegrationTests
 
             //gas is added due to forwarding
             var transferEtherReceipt = await web3.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(contractCalculatedAddress, 10, null, 4500000);
-           // var forwardedDeposit = transferEtherReceipt.DecodeAllEvents<ForwarderDepositedEventDTO>()[0].Event;
+            // var forwardedDeposit = transferEtherReceipt.DecodeAllEvents<ForwarderDepositedEventDTO>()[0].Event;
 
             var balance = await web3.Eth.GetBalance.SendRequestAsync(destinationAddress);
             Assert.Equal(balanceDestinationEther + 10, Web3.Web3.Convert.FromWei(balance));
@@ -87,18 +164,48 @@ namespace Nethereum.Forwarder.IntegrationTests
 
         }
 
+        #endregion
+
+
+        #region  ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther
+
         [Fact]
-        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther()
+        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther_Salt_Is_Unit()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther(SaltType.Unint);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+
+        [Fact]
+        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther_Salt_Is_String_Guid()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther(SaltType.String_Guid);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+
+        [Fact]
+        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther_Salt_Is_String_NBitcoin_RandomUtils()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther(SaltType.String_NBitcoin_RandomUtils);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        async Task ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther(SaltType saltType)
         {
             var destinationAddress = "0x6C547791C3573c2093d81b919350DB1094707011";
             //Using ropsten infura 
             //var web3 = _ethereumClientIntegrationFixture.GetInfuraWeb3(InfuraNetwork.Ropsten);
-            var web3 = _ethereumClientIntegrationFixture.GetWeb3(); 
+            var web3 = _ethereumClientIntegrationFixture.GetWeb3();
 
             //Getting the current Ether balance of the destination, we are going to transfer 0.001 ether
             var balanceDestination = await web3.Eth.GetBalance.SendRequestAsync(destinationAddress);
             var balanceDestinationEther = Web3.Web3.Convert.FromWei(balanceDestination);
-            
+
             //Deploying first the default forwarder (template for all clones)
             var defaultForwarderDeploymentReceipt = await ForwarderService.DeployContractAndWaitForReceiptAsync(web3, new ForwarderDeployment());
             var defaultForwaderContractAddress = defaultForwarderDeploymentReceipt.ContractAddress;
@@ -108,29 +215,55 @@ namespace Nethereum.Forwarder.IntegrationTests
             var destinationInContract = await defaultForwarderService.DestinationQueryAsync();
             //validate the destination address has been set correctly
             Assert.True(destinationInContract.IsTheSameAddress(destinationAddress));
-            
+
             //Deploying the factory
             var factoryDeploymentReceipt = await ForwarderFactoryService.DeployContractAndWaitForReceiptAsync(web3, new ForwarderFactoryDeployment());
             var factoryAddress = factoryDeploymentReceipt.ContractAddress;
             var factoryService = new ForwarderFactoryService(web3, factoryDeploymentReceipt.ContractAddress);
 
-            //Lets create new invovice to be paid
-            var salt = BigInteger.Parse("12"); //12 our invoice number
-            var saltHex = new IntTypeEncoder().Encode(salt).ToHex();
+
+            BigInteger saltBbigInteger = 0;
+            byte[] saltByte = null;
+            string saltHex;
+            if (saltType == SaltType.Unint)
+            {
+                //Lets create new invovice to be paid
+                saltBbigInteger = BigInteger.Parse("12");
+                saltHex = new IntTypeEncoder().Encode(saltBbigInteger).ToHex();
+            }
+            else
+            {
+                //Lets create new invovice to be paid
+                var salts = GetSalts(saltType);
+                saltByte = salts.Salt;
+                saltHex = salts.SaltHax;
+            }
 
             //Calculate the new contract address
             var contractCalculatedAddress = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex, defaultForwaderContractAddress);
-          
+
             //Let's tranfer some ether, with some extra gas to allow forwarding if the smart contract is deployed (UX problem)
             var transferEtherReceipt = await web3.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(contractCalculatedAddress, (decimal)0.001, null, 4500000);
-            
+
 
             //Check the balance of the adress we sent.. we have not deployed the smart contract so it should be still the same
             var balanceContract = await web3.Eth.GetBalance.SendRequestAsync(contractCalculatedAddress);
             //Assert.Equal((decimal)0.001, Web3.Web3.Convert.FromWei(balanceContract.Value));
 
-            //Create the clone with the salt to match the address
-            var txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt);
+            TransactionReceipt txnReceipt;
+
+            if (saltType == SaltType.Unint)
+            {
+                //Create the clone with the salt to match the address
+                txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltBbigInteger);
+            }
+            else
+            {
+                //Create the clone with the salt to match the address
+                txnReceipt = await factoryService.CloneForwarder1RequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltByte);
+            }
+
+
             var clonedAdress = txnReceipt.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
             Assert.True(clonedAdress.IsTheSameAddress(contractCalculatedAddress));
 
@@ -154,10 +287,38 @@ namespace Nethereum.Forwarder.IntegrationTests
             Assert.Equal((decimal)0.001 + balanceDestinationEther, Web3.Web3.Convert.FromWei(newbalanceDestination));
         }
 
+        #endregion
+
+
+        #region ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory
+
+        [Fact]
+        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory_Salt_Is_Unit()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory(SaltType.Unint);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        [Fact]
+        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory_Salt_Is_String_Guid()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory(SaltType.String_Guid);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
 
 
         [Fact]
-        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory()
+        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory_Salt_Is_String_NBitcoin_RandomUtils()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory(SaltType.String_NBitcoin_RandomUtils);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+
+        async Task ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEther2ClonesUsingFactory(SaltType saltType)
         {
             var destinationAddress = "0x6C547791C3573c2093d81b919350DB1094707011";
             //Using ropsten infura 
@@ -183,40 +344,73 @@ namespace Nethereum.Forwarder.IntegrationTests
             var factoryAddress = factoryDeploymentReceipt.ContractAddress;
             var factoryService = new ForwarderFactoryService(web3, factoryDeploymentReceipt.ContractAddress);
 
-            //Lets create new contract to be paid
-            var salt = BigInteger.Parse("12"); //salt id
-            var saltHex = new IntTypeEncoder().Encode(salt).ToHex();
-
-            //Calculate the new contract address
-            var contractCalculatedAddress = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex, defaultForwaderContractAddress);
-
-            //Let's tranfer some ether, with some extra gas to allow forwarding if the smart contract is deployed (UX problem)
-            var transferEtherReceipt = await web3.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(contractCalculatedAddress, (decimal)0.001, null, 4500000);
+            string contractCalculatedAddress;
 
 
-            //Lets create new contract to be paid
-            var salt2 = BigInteger.Parse("13"); //salt id
-            var saltHex2 = new IntTypeEncoder().Encode(salt2).ToHex();
+            string contractCalculatedAddress2;
 
-            //Calculate the new contract address
-            var contractCalculatedAddress2 = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex2, defaultForwaderContractAddress);
+            if (saltType == SaltType.Unint)
+            {
+                //Lets create new invovice to be paid
+                var saltBbigInteger = BigInteger.Parse("12");
+                var saltHex = new IntTypeEncoder().Encode(saltBbigInteger).ToHex();
+                //Calculate the new contract address
+                contractCalculatedAddress = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex, defaultForwaderContractAddress);
+                //Let's tranfer some ether, with some extra gas to allow forwarding if the smart contract is deployed (UX problem)
+                var transferEtherReceipt = await web3.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(contractCalculatedAddress, (decimal)0.001, null, 4500000);
 
-            //Let's tranfer some ether, with some extra gas to allow forwarding if the smart contract is deployed (UX problem)
-            var transferEtherReceipt2 = await web3.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(contractCalculatedAddress2, (decimal)0.001, null, 4500000);
+
+                //Lets create new invovice to be paid
+                var saltBbigInteger2 = BigInteger.Parse("13");
+                var saltHex2 = new IntTypeEncoder().Encode(saltBbigInteger2).ToHex();
+                //Calculate the new contract address
+                contractCalculatedAddress2 = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex2, defaultForwaderContractAddress);
+                //Let's tranfer some ether, with some extra gas to allow forwarding if the smart contract is deployed (UX problem)
+                var transferEtherReceipt2 = await web3.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(contractCalculatedAddress2, (decimal)0.001, null, 4500000);
+
+                //Create the clone with the salt to match the address
+                var txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltBbigInteger);
+                var clonedAdress = txnReceipt.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
+                Assert.True(clonedAdress.IsTheSameAddress(contractCalculatedAddress));
+
+                //Create the clone2 with the salt to match the address
+                var txnReceipt2 = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltBbigInteger2);
+                var clonedAdress2 = txnReceipt2.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
+                Assert.True(clonedAdress2.IsTheSameAddress(contractCalculatedAddress2));
+
+            }
+            else
+            {
+                //Lets create new invovice to be paid
+                var salts = GetSalts(saltType);
+                var saltByte = salts.Salt;
+                var saltHex = salts.SaltHax;
+                //Calculate the new contract address
+                contractCalculatedAddress = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex, defaultForwaderContractAddress);
+                //Let's tranfer some ether, with some extra gas to allow forwarding if the smart contract is deployed (UX problem)
+                var transferEtherReceipt = await web3.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(contractCalculatedAddress, (decimal)0.001, null, 4500000);
 
 
+                //Lets create new invovice to be paid
+                salts = GetSalts(saltType);
+                var saltByte2 = salts.Salt;
+                var saltHex2 = salts.SaltHax;
+                //Calculate the new contract address
+                contractCalculatedAddress2 = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex2, defaultForwaderContractAddress);
+                //Let's tranfer some ether, with some extra gas to allow forwarding if the smart contract is deployed (UX problem)
+                var transferEtherReceipt2 = await web3.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(contractCalculatedAddress2, (decimal)0.001, null, 4500000);
 
-            //Create the clone with the salt to match the address
-            var txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt);
-            var clonedAdress = txnReceipt.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
-            Assert.True(clonedAdress.IsTheSameAddress(contractCalculatedAddress));
+                //Create the clone with the salt to match the address
+                var txnReceipt = await factoryService.CloneForwarder1RequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltByte);
+                var clonedAdress = txnReceipt.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
+                Assert.True(clonedAdress.IsTheSameAddress(contractCalculatedAddress));
 
-            //Create the clone2 with the salt to match the address
-            var txnReceipt2 = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt2);
-            var clonedAdress2 = txnReceipt2.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
-            Assert.True(clonedAdress2.IsTheSameAddress(contractCalculatedAddress2));
+                //Create the clone2 with the salt to match the address
+                var txnReceipt2 = await factoryService.CloneForwarder1RequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltByte2);
+                var clonedAdress2 = txnReceipt2.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
+                Assert.True(clonedAdress2.IsTheSameAddress(contractCalculatedAddress2));
+            }
 
-           
             //Flushing from the factory
             var flushAllReceipt = await factoryService.FlushEtherRequestAndWaitForReceiptAsync(new List<string> { contractCalculatedAddress, contractCalculatedAddress2 });
 
@@ -225,10 +419,35 @@ namespace Nethereum.Forwarder.IntegrationTests
             Assert.Equal((decimal)0.001 + (decimal)0.001 + balanceDestinationEther, Web3.Web3.Convert.FromWei(newbalanceDestination));
         }
 
+        #endregion
 
+        #region
 
         [Fact]
-        public async void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory()
+        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory_Salt_Is_Unit()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory(SaltType.Unint);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        [Fact]
+        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory_Salt_Is_String_Guid()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory(SaltType.String_Guid);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        [Fact]
+        public void ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory_Salt_Is_String_NBitcoin_RandomUtils()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory(SaltType.String_NBitcoin_RandomUtils);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        async Task ShouldDeployForwarder_TransferEther_CloneItUsingFactory_FlushEtherManyClonesUsingFactory(SaltType saltType)
         {
             var destinationAddress = "0x6C547791C3573c2093d81b919350DB1094707011";
             //Using ropsten infura 
@@ -253,19 +472,19 @@ namespace Nethereum.Forwarder.IntegrationTests
             var factoryDeploymentReceipt = await ForwarderFactoryService.DeployContractAndWaitForReceiptAsync(web3, new ForwarderFactoryDeployment());
             var factoryAddress = factoryDeploymentReceipt.ContractAddress;
             var factoryService = new ForwarderFactoryService(web3, factoryDeploymentReceipt.ContractAddress);
-            var addresses = await SendEtherAndCreateClones(50, web3, factoryService, 0.001M, factoryAddress, defaultForwaderContractAddress);
+            var addresses = await SendEtherAndCreateClones(50, web3, factoryService, 0.001M, factoryAddress, defaultForwaderContractAddress, saltType);
 
 
             //Flushing from the factory
             var flushAllReceipt = await factoryService.FlushEtherRequestAndWaitForReceiptAsync(addresses);
             //check here the cost ^^^
             var totalEtherTransfered = 0.001M * addresses.Count;
-          
+
             var newbalanceDestination = await web3.Eth.GetBalance.SendRequestAsync(destinationAddress);
             Assert.Equal(totalEtherTransfered + balanceDestinationEther, Web3.Web3.Convert.FromWei(newbalanceDestination));
         }
 
-        private async Task<List<string>> SendEtherAndCreateClones(int numberOfClones, Web3.Web3 web3, ForwarderFactoryService factoryService, decimal amount, string factoryAddress, string defaultForwaderContractAddress)
+        private async Task<List<string>> SendEtherAndCreateClones(int numberOfClones, Web3.Web3 web3, ForwarderFactoryService factoryService, decimal amount, string factoryAddress, string defaultForwaderContractAddress, SaltType saltType)
         {
 
             var numProcs = Environment.ProcessorCount;
@@ -278,34 +497,88 @@ namespace Nethereum.Forwarder.IntegrationTests
             Parallel.ForEach(taskItems, (item, state) =>
             {
                 var id = item.ToString();
-                var address = SendEtherAndCreateClone(web3, factoryService, amount, id, factoryAddress, defaultForwaderContractAddress).Result;
+                var address = SendEtherAndCreateClone(web3, factoryService, amount, id, factoryAddress, defaultForwaderContractAddress, saltType).Result;
                 concurrentDictionary.TryAdd(item, address);
             });
 
             return concurrentDictionary.Values.ToList();
         }
-        
 
-            private async Task<string> SendEtherAndCreateClone(Web3.Web3 web3, ForwarderFactoryService factoryService, decimal amount, string saltNumber, string factoryAddress, string defaultForwaderContractAddress)
+
+        private async Task<string> SendEtherAndCreateClone(Web3.Web3 web3, ForwarderFactoryService factoryService, decimal amount, string saltNumber, string factoryAddress, string defaultForwaderContractAddress, SaltType saltType)
         {
-            //Lets create new contract to be paid
-            var salt = BigInteger.Parse(saltNumber); //salt id
-            var saltHex = new IntTypeEncoder().Encode(salt).ToHex();
+            TransactionReceipt txnReceipt;
+            string contractCalculatedAddress;
 
-            //Calculate the new contract address
-            var contractCalculatedAddress = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex, defaultForwaderContractAddress);
+            if (saltType == SaltType.Unint)
+            {
+                //Lets create new contract to be paid
+                var salt = BigInteger.Parse(saltNumber); //salt id
+                var saltHex = new IntTypeEncoder().Encode(salt).ToHex();
 
-            //Let's tranfer some ether, with some extra gas to allow forwarding if the smart contract is deployed (UX problem)
-            var transferEtherReceipt = await web3.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(contractCalculatedAddress, amount, null, 4500000);
-            
-            var txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt);
+                //Calculate the new contract address
+                contractCalculatedAddress = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex, defaultForwaderContractAddress);
+
+                //Let's tranfer some ether, with some extra gas to allow forwarding if the smart contract is deployed (UX problem)
+                var transferEtherReceipt = await web3.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(contractCalculatedAddress, amount, null, 4500000);
+                txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt);
+
+            }
+            else
+            {
+                var salts = GetSalts(saltType);
+                var salt = salts.Salt;
+                var saltHex = salts.SaltHax;
+                //Calculate the new contract address
+                contractCalculatedAddress = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex, defaultForwaderContractAddress);
+
+                //Let's tranfer some ether, with some extra gas to allow forwarding if the smart contract is deployed (UX problem)
+                var transferEtherReceipt = await web3.Eth.GetEtherTransferService().TransferEtherAndWaitForReceiptAsync(contractCalculatedAddress, amount, null, 4500000);
+                txnReceipt = await factoryService.CloneForwarder1RequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt);
+
+            }
+
+
             var clonedAdress = txnReceipt.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
             Assert.True(clonedAdress.IsTheSameAddress(contractCalculatedAddress));
             return contractCalculatedAddress;
         }
 
+        #endregion
+
+        #region
+
         [Fact]
-        public async void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken()
+        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken_Salt_Is_Unit()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken(SaltType.Unint);
+
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        [Fact]
+        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken_Salt_Is_String_Guid()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken(SaltType.String_Guid);
+
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        [Fact]
+        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken_Salt_Is_String_NBitcoin_RandomUtils()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken(SaltType.String_NBitcoin_RandomUtils);
+
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        async Task ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushToken(SaltType saltType)
         {
             var destinationAddress = "0x6C547791C3573c2093d81b919350DB1094707011";
             //Using ropsten infura 
@@ -332,22 +605,44 @@ namespace Nethereum.Forwarder.IntegrationTests
             var factoryAddress = factoryDeploymentReceipt.ContractAddress;
             var factoryService = new ForwarderFactoryService(web3, factoryDeploymentReceipt.ContractAddress);
 
-            //Lets create new invovice to be paid
-            var salt = BigInteger.Parse("12"); //12 our invoice number
-            var saltHex = new IntTypeEncoder().Encode(salt).ToHex();
+            string contractCalculatedAddress;
+            BigInteger saltBigInteger = 0;
+            byte[] saltByte = null;
+            string saltHex;
+            if (saltType == SaltType.Unint)
+            {
+                //Lets create new invovice to be paid
+                saltBigInteger = BigInteger.Parse("12"); //12 our invoice number
+                saltHex = new IntTypeEncoder().Encode(saltBigInteger).ToHex();
+            }
+            else
+            {
+                //Lets create new invovice to be paid
+                var salts = GetSalts(saltType);
+                saltByte = salts.Salt;
+                saltHex = salts.SaltHax;
+            }
 
             //Calculate the new contract address
-            var contractCalculatedAddress = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex, defaultForwaderContractAddress);
-
-
+            contractCalculatedAddress = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex, defaultForwaderContractAddress);
 
             var transferRecipt = await tokenService.TransferRequestAndWaitForReceiptAsync(contractCalculatedAddress, Web3.Web3.Convert.ToWei(0.001));
             //Check the balance of the adress we sent.. we have not deployed the smart contract so it should be still the same
             var balanceContract = await tokenService.BalanceOfQueryAsync(contractCalculatedAddress);
             Assert.Equal((decimal)0.001, Web3.Web3.Convert.FromWei(balanceContract));
 
-            //Create the clone with the salt to match the address
-            var txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt);
+            TransactionReceipt txnReceipt;
+            if (saltType == SaltType.Unint)
+            {
+                //Create the clone with the salt to match the address
+                txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltBigInteger);
+            }
+            else
+            {
+                //Create the clone with the salt to match the address
+                txnReceipt = await factoryService.CloneForwarder1RequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltByte);
+            }
+
             var clonedAdress = txnReceipt.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
             Assert.True(clonedAdress.IsTheSameAddress(contractCalculatedAddress));
 
@@ -360,15 +655,47 @@ namespace Nethereum.Forwarder.IntegrationTests
             //Using flush directly in the cloned contract
             //call flush to get all the ether transferred to destination address 
             var flushReceipt = await clonedForwarderService.FlushTokensRequestAndWaitForReceiptAsync(tokenService.ContractHandler.ContractAddress);
-          
+
             //validate balances...
             var newbalanceDestination = await tokenService.BalanceOfQueryAsync(destinationAddress);
             Assert.Equal((decimal)0.001, Web3.Web3.Convert.FromWei(newbalanceDestination));
         }
 
+        #endregion
+
+        #region
 
         [Fact]
-        public async void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory()
+        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory_Salt_Is_Unit()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory(SaltType.Unint);
+
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        [Fact]
+        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory_Salt_Is_String_Guid()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory(SaltType.String_Guid);
+
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        [Fact]
+        public void ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory_Salt_Is_String_NBitcoin_RandomUtilst()
+        {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+            ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory(SaltType.String_NBitcoin_RandomUtils);
+
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        }
+
+        async Task ShouldDeployForwarder_TransferToken_CloneItUsingFactory_FlushTokensUsinFactory(SaltType saltType)
         {
             var destinationAddress = "0x6C547791C3573c2093d81b919350DB1094707011";
             //Using ropsten infura 
@@ -395,18 +722,37 @@ namespace Nethereum.Forwarder.IntegrationTests
             var factoryAddress = factoryDeploymentReceipt.ContractAddress;
             var factoryService = new ForwarderFactoryService(web3, factoryDeploymentReceipt.ContractAddress);
 
-            //Lets create new salt
-            var salt = BigInteger.Parse("12"); //12
-            var saltHex = new IntTypeEncoder().Encode(salt).ToHex();
+            string saltHex;
+            string saltHex2;
+            BigInteger saltBigInteger = 0;
+            BigInteger saltBigInteger2 = 0;
+            byte[] saltByte = null;
+            byte[] saltByte2 = null;
+
+            if (saltType == SaltType.Unint)
+            {
+                //Lets create new salt
+                saltBigInteger = BigInteger.Parse("12"); //12
+                saltHex = new IntTypeEncoder().Encode(saltBigInteger).ToHex();
+
+                //Lets create new salt for another 
+                saltBigInteger2 = BigInteger.Parse("13"); //13
+                saltHex2 = new IntTypeEncoder().Encode(saltBigInteger2).ToHex();
+            }
+            else
+            {
+                var salts = GetSalts(saltType);
+                saltByte = salts.Salt;
+                saltHex = salts.SaltHax;
+
+                salts = GetSalts(saltType);
+                saltByte2 = salts.Salt;
+                saltHex2 = salts.SaltHax;
+            }
+
 
             //Calculate the new contract address
             var contractCalculatedAddress = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex, defaultForwaderContractAddress);
-
-
-
-            //Lets create new salt for another 
-            var salt2 = BigInteger.Parse("13"); //13
-            var saltHex2 = new IntTypeEncoder().Encode(salt2).ToHex();
 
             //Calculate the new contract address
             var contractCalculatedAddress2 = CalculateCreate2AddressMinimalProxy(factoryAddress, saltHex2, defaultForwaderContractAddress);
@@ -419,15 +765,29 @@ namespace Nethereum.Forwarder.IntegrationTests
 
             var transferReceipt2 = await tokenService.TransferRequestAndWaitForReceiptAsync(contractCalculatedAddress2, Web3.Web3.Convert.ToWei(0.001));
 
-            //Create the clone with the salt to match the address
-            var txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt);
-            var clonedAdress = txnReceipt.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
-            Assert.True(clonedAdress.IsTheSameAddress(contractCalculatedAddress));
+            if (saltType == SaltType.Unint)
+            {
+                //Create the clone with the salt to match the address
+                var txnReceipt = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltBigInteger);
+                var clonedAdress = txnReceipt.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
+                Assert.True(clonedAdress.IsTheSameAddress(contractCalculatedAddress));
 
 
-            var txnReceipt2 = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, salt2);
-            var clonedAdress2 = txnReceipt2.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
-            Assert.True(clonedAdress2.IsTheSameAddress(contractCalculatedAddress2));
+                var txnReceipt2 = await factoryService.CloneForwarderRequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltBigInteger2);
+                var clonedAdress2 = txnReceipt2.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
+                Assert.True(clonedAdress2.IsTheSameAddress(contractCalculatedAddress2));
+            }
+            else
+            {
+                //Create the clone with the salt to match the address
+                var txnReceipt = await factoryService.CloneForwarder1RequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltByte);
+                var clonedAdress = txnReceipt.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
+                Assert.True(clonedAdress.IsTheSameAddress(contractCalculatedAddress));
+
+                var txnReceipt2 = await factoryService.CloneForwarder1RequestAndWaitForReceiptAsync(defaultForwaderContractAddress, saltByte2);
+                var clonedAdress2 = txnReceipt2.DecodeAllEvents<ForwarderClonedEventDTO>()[0].Event.ClonedAdress;
+                Assert.True(clonedAdress2.IsTheSameAddress(contractCalculatedAddress2));
+            }
 
             //Flushing from the factory
             var flushAllReceipt = await factoryService.FlushTokensRequestAndWaitForReceiptAsync(new List<string> { contractCalculatedAddress, contractCalculatedAddress2 }, tokenService.ContractHandler.ContractAddress);
@@ -436,6 +796,8 @@ namespace Nethereum.Forwarder.IntegrationTests
             var newbalanceDestination = await tokenService.BalanceOfQueryAsync(destinationAddress);
             Assert.Equal((decimal)0.001 + (decimal)0.001, Web3.Web3.Convert.FromWei(newbalanceDestination));
         }
+
+        #endregion
 
         //extracted from latest Nethereum Util
         public static string CalculateCreate2AddressMinimalProxy(string address, string saltHex, string deploymentAddress)

@@ -61,6 +61,24 @@ namespace Nethereum.WalletForwarder.Contracts.ForwarderFactory
              return ContractHandler.SendRequestAsync(cloneForwarderFunction);
         }
 
+        public Task<string> CloneForwarder1RequestAsync(string forwarder, byte[] salt)
+        {
+            var cloneForwarderFunction = new CloneForwarder1Function();
+            cloneForwarderFunction.Forwarder = forwarder;
+            cloneForwarderFunction.Salt = salt;
+
+            return ContractHandler.SendRequestAsync(cloneForwarderFunction);
+        }
+
+        public Task<TransactionReceipt> CloneForwarder1RequestAndWaitForReceiptAsync(string forwarder, byte[] salt, CancellationTokenSource cancellationToken = null)
+        {
+            var cloneForwarderFunction = new CloneForwarder1Function();
+            cloneForwarderFunction.Forwarder = forwarder;
+            cloneForwarderFunction.Salt = salt;
+
+            return ContractHandler.SendRequestAndWaitForReceiptAsync(cloneForwarderFunction, cancellationToken);
+        }
+
         public Task<TransactionReceipt> CloneForwarderRequestAndWaitForReceiptAsync(string forwarder, BigInteger salt, CancellationTokenSource cancellationToken = null)
         {
             var cloneForwarderFunction = new CloneForwarderFunction();
