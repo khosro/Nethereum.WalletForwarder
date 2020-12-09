@@ -5,10 +5,12 @@ import "./Erc20.sol";
 /**
  * Contract that will forward any incoming Ether to the creator of the contract
  */
-contract Forwarder {
+contract LazyForwarder {
   // Address to which any funds sent to this contract will be forwarded
-  address payable public destination;
-  address private owner;
+  
+  address payable private destination;
+  address   private caller;
+  
   bool inititalised = false;
 
   event ForwarderDeposited(address from, uint value, bytes data);
@@ -20,42 +22,29 @@ contract Forwarder {
    */
   constructor() {
     destination = msg.sender;
-    owner = msg.sender;
     inititalised = true;
   }
 
  modifier onlyDestinationOrOwner {
-    if (msg.sender != destination && msg.sender != owner) {
+    if (msg.sender != destination && msg.sender != caller) {
       revert("Only destination and owner");
     }
     _;
   }
 
-  modifier onlyDestination {
-    if (msg.sender != destination) {
-      revert("Only destination");
-    }
-    _;
-  }
-  //if forwarder is deployed.. forward the payment straight away
-  receive() virtual external payable {
-     destination.transfer(msg.value);
+  receive() external payable {
      emit ForwarderDeposited(msg.sender, msg.value, msg.data);
   }
 
   //init on create2
-  function init(address payable newDestination) public {
+  function init(address payable des,address call1) public {
       if(!inititalised){
-          owner = msg.sender;
-          destination = newDestination;
+         caller = call1;
+          destination = des;
           inititalised = true;
       }
   }
-  
-  function changeDestination(address payable newDestination) public onlyDestination{
-      destination = newDestination;
-  }
-
+ 
   //flush the tokens
   function flushTokens(address tokenContractAddress) public onlyDestinationOrOwner {
     IERC20 instance = IERC20(tokenContractAddress);
@@ -71,13 +60,8 @@ contract Forwarder {
 
   function flush() payable public onlyDestinationOrOwner {
     address payable thisContract = address(this);
-    destination.transfer(thisContract.balance);
+     destination.transfer(thisContract.balance);
   }
   
-  //simple withdraw instead of flush
-  function withdraw() payable external onlyDestinationOrOwner {
-      address payable thisContract = address(this);
-      msg.sender.transfer(thisContract.balance);
-  }
 }
 

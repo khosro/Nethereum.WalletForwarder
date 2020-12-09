@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.8.0;
-import "./Forwarder.sol";
 import "./LazyForwarder.sol";
 
-contract ForwarderFactory {
+contract LazyForwarderFactory {
 
-  address private owner;
+  address payable private owner;
 
   event ForwarderCloned(address clonedAdress);
 
@@ -20,14 +19,14 @@ contract ForwarderFactory {
     _;
   }
 
-function cloneForwarder(address payable forwarder, uint256 salt)  public onlyOwner returns (Forwarder clonedForwarder) {
-      address payable clonedAddress = createClone(forwarder, salt);
-      Forwarder  parentForwarder = Forwarder(forwarder);
-      clonedForwarder = Forwarder(clonedAddress);
-      clonedForwarder.init(parentForwarder.destination());
-  }
+ function cloneForwarder(address payable forwarder, bytes32 salt)  public onlyOwner returns (LazyForwarder clonedForwarder) {
+    address payable clonedAddress = createClone(forwarder, salt);
+    clonedForwarder = LazyForwarder(clonedAddress);
+    clonedForwarder.init(owner,address(this));
+    emit ForwarderCloned(clonedAddress);
+ }
 
-  function createClone(address target, uint256 salt) private returns (address payable result) {
+ function createClone(address target, bytes32 salt) private returns (address payable result) {
     bytes20 targetBytes = bytes20(target);
     assembly {
       let clone := mload(0x40)
@@ -38,16 +37,16 @@ function cloneForwarder(address payable forwarder, uint256 salt)  public onlyOwn
     }
   }
 
-function flushTokens(address payable[]  memory forwarders, address tokenAddres) public onlyOwner{
+  function flushTokens(address payable[]  memory forwarders, address tokenAddres) public {
       for (uint index = 0; index < forwarders.length; index++) {
-         Forwarder forwarder = Forwarder(forwarders[index]);
+         LazyForwarder forwarder = LazyForwarder(forwarders[index]);
          forwarder.flushTokens(tokenAddres);
       }
   }
 
-function flushEther(address payable[]  memory forwarders) public onlyOwner {
+  function flushEther(address payable[]  memory forwarders) public {
       for (uint index = 0; index < forwarders.length; index++) {
-         Forwarder forwarder = Forwarder(forwarders[index]);
+         LazyForwarder forwarder = LazyForwarder(forwarders[index]);
          forwarder.flush();
       }
   }

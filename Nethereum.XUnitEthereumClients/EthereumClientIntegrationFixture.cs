@@ -33,12 +33,27 @@ namespace Nethereum.XUnitEthereumClients
         public static string GethClientPath { get; set; } = @"..\..\..\..\testchain\clique\geth.exe";
         public static string ParityClientPath { get; set; } = @"..\..\..\..\testchain\paritypoa\parity.exe";
         public static string AccountPrivateKey { get; set; } = "0xb5b1870957d373ef0eeffecc6e4812c0fd08f554b37b233526acc331bf1544f7";
+        public static string AlternateAccountPublicKey { get; set; } = "0x27cD71C0Ab827B1B07b57B0AB774D3106E1C5104";
+        public static string AlternateAccountPrivateKey { get; set; } = "55ff5a04c00c1c8e5bac55ec6929306c9de0f24ccc7aa6bc406fc7a688fe9a50";
         public static string AccountAddress { get; set; } = "0x12890d2cce102216644c59daE5baed380d84830c";
         public static string ManagedAccountPassword { get; set; } = "password";
         public static string InfuraId { get; set; } = "7238211010344719ad14a89db874158c";
         public static InfuraNetwork InfuraNetwork { get; set; } = InfuraNetwork.Ropsten;
         public static string HttpUrl { get; set; } = "http://localhost:8545";
         public static System.Numerics.BigInteger ChainId { get; set; } = 444444444500;
+        public static string DestinationPublicKey = "0xCc9978615C5a50b094C15FD01671032E599f133c";
+        public static string DestinationPrivateKey = "fb60bbd995a05f7dfedf7fc9848055e5daf08d0b59167348f5de25321ba2c331";
+
+
+        public static Account GetDestinationAccount()
+        {
+            return new Account(DestinationPrivateKey, ChainId);
+        }
+
+        public static Account GetAlternateAccount()
+        {
+            return new Account(AlternateAccountPrivateKey, ChainId);
+        }
 
         public static Account GetAccount()
         {
@@ -84,6 +99,28 @@ namespace Nethereum.XUnitEthereumClients
             }
 
             return _web3;
+        }
+
+        private Web3.Web3 _alternateWeb3;
+        public Web3.Web3 GetAlternateWeb3()
+        {
+            if (_alternateWeb3 == null)
+            {
+                _alternateWeb3 = new Web3.Web3(GetAlternateAccount(), GetHttpUrl());
+            }
+
+            return _alternateWeb3;
+        }
+
+        private Web3.Web3 _destinationWeb3;
+        public Web3.Web3 GetDestinationWeb3()
+        {
+            if (_destinationWeb3 == null)
+            {
+                _destinationWeb3 = new Web3.Web3(GetDestinationAccount(), GetHttpUrl());
+            }
+
+            return _destinationWeb3;
         }
 
         public EthereumClient EthereumClient { get; private set; } = EthereumClient.Geth;

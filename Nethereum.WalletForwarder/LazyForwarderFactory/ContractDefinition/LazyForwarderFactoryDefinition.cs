@@ -1,0 +1,79 @@
+using System;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Numerics;
+using Nethereum.Hex.HexTypes;
+using Nethereum.ABI.FunctionEncoding.Attributes;
+using Nethereum.Web3;
+using Nethereum.RPC.Eth.DTOs;
+using Nethereum.Contracts.CQS;
+using Nethereum.Contracts;
+using System.Threading;
+
+namespace Nethereum.WalletForwarder.Contracts.ForwarderFactory.ContractDefinition
+{
+
+
+    public partial class LazyForwarderFactoryDeployment : LazyForwarderFactoryDeploymentBase
+    {
+        public LazyForwarderFactoryDeployment() : base(BYTECODE) { }
+        public LazyForwarderFactoryDeployment(string byteCode) : base(byteCode) { }
+    }
+
+    public class LazyForwarderFactoryDeploymentBase : ContractDeploymentMessage
+    {
+        public static string BYTECODE = "608060405234801561001057600080fd5b50600080546001600160a01b0319163317905561049d806100326000396000f3fe608060405234801561001057600080fd5b50600436106100415760003560e01c806396909a7914610046578063bcebbcd4146100eb578063f255d87a14610199575b600080fd5b6100e96004803603602081101561005c57600080fd5b81019060208101813564010000000081111561007757600080fd5b82018360208201111561008957600080fd5b803590602001918460208302840111640100000000831117156100ab57600080fd5b9190808060200260200160405190810160405280939291908181526020018383602002808284376000920191909152509295506101e1945050505050565b005b6100e96004803603604081101561010157600080fd5b81019060208101813564010000000081111561011c57600080fd5b82018360208201111561012e57600080fd5b8035906020019184602083028401116401000000008311171561015057600080fd5b919080806020026020016040519081016040528093929190818152602001838360200280828437600092019190915250929550505090356001600160a01b031691506102699050565b6101c5600480360360408110156101af57600080fd5b506001600160a01b038135169060200135610306565b604080516001600160a01b039092168252519081900360200190f35b60005b81518110156102655760008282815181106101fb57fe5b60200260200101519050806001600160a01b0316636b9f96ea6040518163ffffffff1660e01b8152600401600060405180830381600087803b15801561024057600080fd5b505af1158015610254573d6000803e3d6000fd5b5050600190930192506101e4915050565b5050565b60005b825181101561030157600083828151811061028357fe5b60200260200101519050806001600160a01b0316633ef13367846040518263ffffffff1660e01b815260040180826001600160a01b03168152602001915050600060405180830381600087803b1580156102dc57600080fd5b505af11580156102f0573d6000803e3d6000fd5b50506001909301925061026c915050565b505050565b600080546001600160a01b03163314610353576040805162461bcd60e51b815260206004820152600a60248201526927b7363c9037bbb732b960b11b604482015290519081900360640190fd5b600061035f8484610413565b600080546040805163784d200b60e11b81526001600160a01b03928316600482015230602482015290519395508594509084169263f09a40169260448084019391929182900301818387803b1580156103b757600080fd5b505af11580156103cb573d6000803e3d6000fd5b5050604080516001600160a01b038516815290517f5dd8f89d9637eb98e980512c69ed8152bd1abced4c6785ceeb9f7628bd42e8099350908190036020019150a15092915050565b6000808360601b9050604051733d602d80600a3d3981f3363d3d373d3d3d363d7360601b81528160148201526e5af43d82803e903d91602b57fd5bf360881b6028820152836037826000f59594505050505056fea264697066735822122064b356d523dbbd7af3c03a6089fe6ec4c805db6c7a3682b9216a9e3c9c79f0a064736f6c63430007000033";
+
+
+        public LazyForwarderFactoryDeploymentBase() : base(BYTECODE) { }
+        public LazyForwarderFactoryDeploymentBase(string byteCode) : base(byteCode) { }
+
+    }
+
+    public partial class LazyCloneForwarderFunction : LazyCloneForwarderFunctionBase { }
+
+    [Function("cloneForwarder", "address")]
+    public class LazyCloneForwarderFunctionBase : FunctionMessage
+    {
+        [Parameter("address", "forwarder", 1)]
+        public virtual string Forwarder { get; set; }
+
+        [Parameter("bytes32", "salt", 2)]
+        public byte[] Salt { get; set; }
+    }
+
+    public partial class LazyFlushEtherFunction : LazyFlushEtherFunctionBase { }
+
+    [Function("flushEther")]
+    public class LazyFlushEtherFunctionBase : FunctionMessage
+    {
+        [Parameter("address[]", "forwarders", 1)]
+        public virtual List<string> Forwarders { get; set; }
+    }
+
+    public partial class LazyFlushTokensFunction : LazyFlushTokensFunctionBase { }
+
+    [Function("flushTokens")]
+    public class LazyFlushTokensFunctionBase : FunctionMessage
+    {
+        [Parameter("address[]", "forwarders", 1)]
+        public virtual List<string> Forwarders { get; set; }
+        [Parameter("address", "tokenAddres", 2)]
+        public virtual string TokenAddres { get; set; }
+    }
+
+    public partial class LazyForwarderClonedEventDTO : LazyForwarderClonedEventDTOBase { }
+
+    [Event("ForwarderCloned")]
+    public class LazyForwarderClonedEventDTOBase : IEventDTO
+    {
+        [Parameter("address", "clonedAdress", 1, false)]
+        public virtual string ClonedAdress { get; set; }
+    }
+
+
+
+
+
+
+}
